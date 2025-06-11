@@ -1,5 +1,5 @@
 import { weightedRandomTile } from '../modules/tile-utils.js';
-
+import { Entity } from '../modules/Entity.js';
 
 export class OverworldScene extends Phaser.Scene {
     constructor() {
@@ -13,12 +13,17 @@ export class OverworldScene extends Phaser.Scene {
             frameHeight: 48
         });
 
+        this.load.spritesheet('bunny-idle', 'assets/Dreamyland_assets/Sprites/Characters/Bunny/IDLE/Idle bunny.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+
         // Load tileset images
         this.load.image('tiles-grass-dirt', 'assets/Dreamyland_assets/Tileset/Autotile Grass and Dirt Path Tileset.png');
         this.load.image('tiles-obstacles', 'assets/Dreamyland_assets/Tileset/Nature Tileset.png');
         this.load.image('tiles-decor', 'assets/Dreamyland_assets/Tileset/Tileset floor detail.png');
 
-        // Load TSX files as text (use your correct filenames here)
+        // Load TSX files as text
         this.load.text('ground-tsx', 'assets/tileSets/Ground.tsx');
         this.load.text('obstacle-tsx', 'assets/tileSets/Obstacles.tsx');
         this.load.text('decor-tsx', 'assets/tileSets/Decor.tsx');
@@ -28,17 +33,21 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     create() {
-        const screenWidth = this.sys.game.config.width;
-        const screenHeight = this.sys.game.config.height;
+        this.cameraPanSpeed = 200; // Pixels per second
+        const tileSize = 16;
+        const mapWidth = 100;
+        const mapHeight = 100;
+
         this.minPatchCount = 5;
         this.maxPatchCount = 10;
-
         this.minDirtWidth = 3;
         this.maxDirtWidth = 7;
         this.minDirtHeight = 3;
         this.maxDirtHeight = 7;
-        this.tileCategoryMap = 
-        {
+
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.keys = this.input.keyboard.addKeys('W,A,S,D,O,I,P');
+        this.tileCategoryMap = {
             'GRASS': [],
             'DIRT': [],
             'DECOR': [],
@@ -46,8 +55,7 @@ export class OverworldScene extends Phaser.Scene {
             'OBSTACLES': [],
         };
 
-        this.tileCategoryTileSets = 
-        {
+        this.tileCategoryTileSets = {
             'GRASS': 'tiles-grass-dirt',
             'DIRT': 'tiles-grass-dirt',
             'DECOR': 'tiles-decor',
@@ -55,19 +63,12 @@ export class OverworldScene extends Phaser.Scene {
             'OBSTACLES': 'tiles-obstacles',
         };
 
-        // === Parse TSX files ===
         this.tilesetProperties = {
             'tiles-grass-dirt': this.parseTsx(this.cache.text.get('ground-tsx')),
             'tiles-obstacles': this.parseTsx(this.cache.text.get('obstacle-tsx')),
             'tiles-decor': this.parseTsx(this.cache.text.get('decor-tsx'))
         };
 
-        const tileSize = 16;
-        const mapWidth = Math.ceil(screenWidth / tileSize);
-        const mapHeight = Math.ceil(screenHeight / tileSize);
-
-
-        // Empty map data
         const mapData = Array.from({ length: mapHeight }, () =>
             Array.from({ length: mapWidth }, () => 0)
         );
@@ -78,145 +79,338 @@ export class OverworldScene extends Phaser.Scene {
             tileHeight: tileSize
         });
 
-        // Add tilesets
         const tilesetGround = map.addTilesetImage('tiles-grass-dirt', null, tileSize, tileSize);
         const tilesetObstacles = map.addTilesetImage('tiles-obstacles', null, tileSize, tileSize);
         const tilesetDecor = map.addTilesetImage('tiles-decor', null, tileSize, tileSize);
 
-        //store tilsetColumnSize for placement logic
         this.tilesetColumnsLookup = {};
+        this.tilesetColumnsLookup['tiles-grass-dirt'] = this.textures.get('tiles-grass-dirt').getSourceImage().width / 16;
+        this.tilesetColumnsLookup['tiles-obstacles'] = this.textures.get('tiles-obstacles').getSourceImage().width / 16;
+        this.tilesetColumnsLookup['tiles-decor'] = this.textures.get('tiles-decor').getSourceImage().width / 16;
 
-        // For ground
-        let tex = this.textures.get('tiles-grass-dirt').getSourceImage();
-        this.tilesetColumnsLookup['tiles-grass-dirt'] = tex.width / 16;
-
-        // For obstacles
-        tex = this.textures.get('tiles-obstacles').getSourceImage();
-        this.tilesetColumnsLookup['tiles-obstacles'] = tex.width / 16;
-
-        // For decor
-        tex = this.textures.get('tiles-decor').getSourceImage();
-        this.tilesetColumnsLookup['tiles-decor'] = tex.width / 16;
-
-        // Create layers
         this.groundLayer = map.createLayer(0, tilesetGround, 0, 0);
         this.obstacleLayer = map.createBlankLayer('Obstacles', tilesetObstacles, 0, 0);
         this.decorLayer = map.createBlankLayer('Decor', tilesetDecor, 0, 0);
 
-        // === Fill ground layer ===
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
-                //const isDirt = Math.random() < 0.1;
-                //const tileSetArray = isDirt ? this.tileCategoryMap.DIRT: this.tileCategoryMap.GRASS;
                 const tileSetArray = this.tileCategoryMap.GRASS;
                 const tile = weightedRandomTile(tileSetArray);
-
                 this.groundLayer.putTileAt(tile.index, x, y);
             }
         }
 
-        //== Place dirt layer ===
-        this.perlinBasedDirt(mapWidth, mapHeight);
+this.perlinBasedDirt(mapWidth, mapHeight);
+this.debugOverlayGroup = this.add.group();
+this.dirtAutoTileMap = {
+    0: 98,    // Isolated dirt tile
+    1: 101,    // W only → right edge
+    2: 99,    // E only → left edge
+    3: 100,   // E + W → horizontal center
+    4: 35,    // S only → top edge
+    5: 38,    // S + W → top-right corner
+    6: 36,    // S + E → top-left corner
+    7: 37,    // S + E + W → fallback → pick top-left
+    8: 77,    // N only → bottom edge
+    9: 80,    // N + W → bottom-right corner
+    10: 78,   // N + E → bottom-left corner
+    11: 79,   // N + E + W → fallback → bottom-left
+    12: 56,   // N + S → vertical center
+    13: 59,   // N + S + W → fallback → vertical center
+    14: 57,   // N + S + E → fallback → vertical center
+    15: 58    // Surrounded → full center dirt
+};
 
 
-        // === Place clustered obstacles ===
-        for (let y = 1; y < mapHeight-1; y++) {
-            for (let x = 1; x < mapWidth-1; x++) {
+this.dirtAutoTileMap8 = {};
+
+this.dirtAutoTileMap8[0] = 98;
+this.dirtAutoTileMap8[1] = 101;
+this.dirtAutoTileMap8[2] = 99;
+this.dirtAutoTileMap8[3] = 100;
+this.dirtAutoTileMap8[4] = 35;
+this.dirtAutoTileMap8[6] = 36;
+this.dirtAutoTileMap8[8] = 77;
+this.dirtAutoTileMap8[9] = 80;
+this.dirtAutoTileMap8[10] = 78;
+this.dirtAutoTileMap8[12] = 56;
+this.dirtAutoTileMap8[15] = 58;
+
+this.dirtAutoTileMap8[16] = 77;
+this.dirtAutoTileMap8[17] = 98;
+this.dirtAutoTileMap8[18] = 98;
+this.dirtAutoTileMap8[22] = 78;
+this.dirtAutoTileMap8[24] = 56;
+this.dirtAutoTileMap8[25] = 59;
+this.dirtAutoTileMap8[26] = 78;
+this.dirtAutoTileMap8[27] = 79;
+this.dirtAutoTileMap8[30] = 57;
+this.dirtAutoTileMap8[31] = 58;
+
+this.dirtAutoTileMap8[32] = 98;
+this.dirtAutoTileMap8[35] = 100;
+this.dirtAutoTileMap8[36] = 35;
+this.dirtAutoTileMap8[38] = 36;
+this.dirtAutoTileMap8[39] = 37;
+this.dirtAutoTileMap8[44] = 35;
+this.dirtAutoTileMap8[46] = 36;
+this.dirtAutoTileMap8[47] = 37;
+this.dirtAutoTileMap8[50] = 78;
+this.dirtAutoTileMap8[54] = 36;
+
+this.dirtAutoTileMap8[58] = 78;
+this.dirtAutoTileMap8[62] = 57;
+this.dirtAutoTileMap8[63] = 58;
+this.dirtAutoTileMap8[65] = 101;
+this.dirtAutoTileMap8[66] = 99;
+this.dirtAutoTileMap8[67] = 100;
+this.dirtAutoTileMap8[68] = 35;
+this.dirtAutoTileMap8[69] = 38;
+this.dirtAutoTileMap8[70] = 36;
+this.dirtAutoTileMap8[71] = 37;
+
+this.dirtAutoTileMap8[73] = 101;
+this.dirtAutoTileMap8[76] = 35;
+this.dirtAutoTileMap8[77] = 59;
+this.dirtAutoTileMap8[79] = 58;
+this.dirtAutoTileMap8[80] = 80;
+this.dirtAutoTileMap8[81] = 101;
+this.dirtAutoTileMap8[82] = 99;
+this.dirtAutoTileMap8[84] = 35;
+this.dirtAutoTileMap8[85] = 38;
+this.dirtAutoTileMap8[86] = 36;
+this.dirtAutoTileMap8[87] = 37;
+
+this.dirtAutoTileMap8[88] = 56;
+this.dirtAutoTileMap8[89] = 59;
+this.dirtAutoTileMap8[90] = 57;
+this.dirtAutoTileMap8[91] = 58;
+this.dirtAutoTileMap8[93] = 101;
+this.dirtAutoTileMap8[95] = 58;
+this.dirtAutoTileMap8[100] = 35;
+this.dirtAutoTileMap8[101] = 38;
+this.dirtAutoTileMap8[102] = 36;
+this.dirtAutoTileMap8[103] = 37;
+
+this.dirtAutoTileMap8[111] = 58;
+this.dirtAutoTileMap8[118] = 36;
+this.dirtAutoTileMap8[119] = 37;
+this.dirtAutoTileMap8[126] = 57;
+this.dirtAutoTileMap8[127] = 58;
+this.dirtAutoTileMap8[129] = 101;
+this.dirtAutoTileMap8[13] = 35;
+this.dirtAutoTileMap8[136] = 35;
+this.dirtAutoTileMap8[137] = 80;
+this.dirtAutoTileMap8[139] = 37;
+this.dirtAutoTileMap8[141] = 101;
+this.dirtAutoTileMap8[143] = 58;
+
+this.dirtAutoTileMap8[152] = 56;
+this.dirtAutoTileMap8[153] = 80;
+this.dirtAutoTileMap8[154] = 78;
+this.dirtAutoTileMap8[155] = 79;
+this.dirtAutoTileMap8[158] = 57;
+this.dirtAutoTileMap8[159] = 58;
+this.dirtAutoTileMap8[162] = 99;
+this.dirtAutoTileMap8[175] = 58;
+this.dirtAutoTileMap8[186] = 36;
+this.dirtAutoTileMap8[187] = 37;
+
+this.dirtAutoTileMap8[190] = 57;
+this.dirtAutoTileMap8[191] = 58;
+this.dirtAutoTileMap8[193] = 101;
+this.dirtAutoTileMap8[197] = 38;
+this.dirtAutoTileMap8[201] = 101;
+this.dirtAutoTileMap8[205] = 59;
+this.dirtAutoTileMap8[207] = 58;
+this.dirtAutoTileMap8[217] = 101;
+this.dirtAutoTileMap8[219] = 58;
+this.dirtAutoTileMap8[221] = 101;
+this.dirtAutoTileMap8[223] = 58;
+
+this.dirtAutoTileMap8[229] = 101;
+this.dirtAutoTileMap8[231] = 58;
+this.dirtAutoTileMap8[237] = 58;
+this.dirtAutoTileMap8[239] = 58;
+this.dirtAutoTileMap8[251] = 58;
+this.dirtAutoTileMap8[255] = 58;
+
+
+console.log(this.dirtAutoTileMap8);
+
+ this.applyAutoTileToDirtLayer();   
+
+        for (let y = 1; y < mapHeight - 1; y++) {
+            for (let x = 1; x < mapWidth - 1; x++) {
                 if (Math.random() < this.obstacleSpawnChance && !this.obstacleLayer.hasTileAt(x, y)) {
-
-                let dirtCheck = this.checkGroundLayer(x,y,'dirt');
-                if(dirtCheck == true)
-                    continue;
-                    this.tryPlaceClustered(this.obstacleLayer, this.tileCategoryMap['OBSTACLES'], x, y, [this.decorLayer] , .1);
+                    let dirtCheck = this.checkGroundLayer(x, y, 'dirt');
+                    if (dirtCheck == true) continue;
+                    this.tryPlaceClustered(this.obstacleLayer, this.tileCategoryMap['OBSTACLES'], x, y, [this.decorLayer], .1);
                 }
             }
         }
 
-        // === Place clustered decor ===
-        for (let y = 1; y < mapHeight-1; y++) {
-            for (let x = 1; x < mapWidth-1; x++) {
-                if (this.obstacleLayer.hasTileAt(x, y) ||  this.decorLayer.hasTileAt(x, y)) continue;
-
-                let dirtCheck = this.checkGroundLayer(x,y,'dirt');
-                if(dirtCheck == true)
-                    continue;
-
+        for (let y = 1; y < mapHeight - 1; y++) {
+            for (let x = 1; x < mapWidth - 1; x++) {
+                if (this.obstacleLayer.hasTileAt(x, y) || this.decorLayer.hasTileAt(x, y)) continue;
+                let dirtCheck = this.checkGroundLayer(x, y, 'dirt');
+                if (dirtCheck == true) continue;
                 if (Math.random() < this.decorSpawnChance && !this.decorLayer.hasTileAt(x, y)) {
                     this.tryPlaceClustered(this.decorLayer, this.tileCategoryMap.DECOR, x, y, [this.obstacleLayer], .1);
                 }
             }
         }
 
-        // === Player setup ===
-        const centerX = Math.floor(mapWidth / 2);
-        const centerY = Math.floor(mapHeight / 2);
-        const spawnPos = this.findNearestWalkableTile(centerX, centerY);
-
-        this.player = this.physics.add.sprite(spawnPos.x, spawnPos.y, 'bunny', 0);
-        this.player.setCollideWorldBounds(true);
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.keys = this.input.keyboard.addKeys('W,A,S,D');
-
-        // Create player animations
+        // Animations
         const directions = ['up', 'right', 'left', 'down'];
         directions.forEach((dir, row) => {
             this.anims.create({
                 key: `walk-${dir}`,
-                frames: this.anims.generateFrameNumbers('bunny', {
-                    start: row * 8,
-                    end: row * 8 + 7
-                }),
+                frames: this.anims.generateFrameNumbers('bunny', { start: row * 8, end: row * 8 + 7 }),
                 frameRate: 10,
                 repeat: -1
             });
         });
+
+        directions.forEach((dir, row) => {
+            this.anims.create({
+                key: `idle-${dir}`,
+                frames: this.anims.generateFrameNumbers('bunny-idle', { start: row * 5, end: row * 5 + 4 }),
+                frameRate: 5,
+                repeat: -1
+            });
+        });
+
+        // Pathfinding setup
+        this.pathfinder = new EasyStar.js();
+
+        // === Entities setup ===
+        this.entities = [];
+        const centerX = Math.floor(mapWidth / 2);
+        const centerY = Math.floor(mapHeight / 2);
+        const spawnPos1 = this.findNearestWalkableTile(centerX, centerY);
+        const spawnPos2 = this.findNearestWalkableTile(centerX + 5, centerY + 5);
+
+        const entity1 = new Entity(this, spawnPos1.x, spawnPos1.y, 'bunny', 'bunny-idle', this.pathfinder);
+        const entity2 = new Entity(this, spawnPos2.x, spawnPos2.y, 'bunny', 'bunny-idle', this.pathfinder);
+
+        this.entities.push(entity1);
+        this.entities.push(entity2);
+
+        this.selectedEntity = entity1;
+        this.selectedEntity.setSelected(true);
+
+        this.physics.world.setBounds(0, 0, mapWidth * tileSize, mapHeight * tileSize);
+
+        this.cameras.main.setScroll(this.selectedEntity.sprite.x - this.cameras.main.width / 2, this.selectedEntity.sprite.y - this.cameras.main.height / 2);
+
+        const cameraPadding = 48;
+        this.cameras.main.setBounds(
+            -cameraPadding,
+            -cameraPadding,
+            mapWidth * tileSize + cameraPadding * 2,
+            mapHeight * tileSize + cameraPadding * 2
+        );
+
+
+
+        // Click marker
+        this.clickMarker = this.add.graphics();
+        this.clickMarker.lineStyle(2, 0xffd900, 1);
+        this.clickMarker.strokeCircle(0, 0, 10);
+        this.clickMarker.setVisible(false);
+
+        // Mouse input
+        this.input.on('pointerdown', pointer => {
+            const worldX = pointer.worldX;
+            const worldY = pointer.worldY;
+
+            if (pointer.leftButtonDown()) {
+                let clickedEntity = null;
+                for (const entity of this.entities) {
+                    const dist = Phaser.Math.Distance.Between(entity.sprite.x, entity.sprite.y, worldX, worldY);
+                    if (dist < 24) {
+                        clickedEntity = entity;
+                        break;
+                    }
+                }
+
+                if (clickedEntity) {
+                    if (this.selectedEntity !== clickedEntity) {
+                        this.selectedEntity.setSelected(false);
+                        this.selectedEntity = clickedEntity;
+                        this.selectedEntity.setSelected(true);
+                    }
+                }
+
+            } else if (pointer.rightButtonDown()) {
+                if (this.selectedEntity) {
+                    this.selectedEntity.moveTo(worldX, worldY);
+                    this.clickMarker.setPosition(worldX, worldY);
+                    this.clickMarker.setVisible(true);
+                }
+            }
+        });
     }
 
-patchBasedDirt(mapWidth, mapHeight)
+    update(time, delta) {
+
+if(this.keys.O.isDown)
 {
-const patchCount = Phaser.Math.Between(this.minPatchCount, this.maxPatchCount);
+    this.drawDebugOverlay8();
+}
+if(this.keys.I.isDown)
+{
+    this.drawDebugOverlay();
+}
 
-for (let i = 0; i < patchCount; i++) {
+if(this.keys.P.isDown)
+{
+    this.debugOverlayGroup.clear(true, true);
+}
 
-    const patchCenterX = Phaser.Math.Between(1, mapWidth - 2);
-    const patchCenterY = Phaser.Math.Between(1, mapHeight - 2);
+        const camera = this.cameras.main;
+        const cameraMove = this.cameraPanSpeed * (delta / 1000);
 
-    const patchWidth = Phaser.Math.Between(this.minDirtWidth, this.maxDirtWidth);
-    const patchHeight = Phaser.Math.Between(this.minDirtHeight, this.maxDirtHeight);
+        if (this.cursors.left.isDown || this.keys.A.isDown) {
+            camera.scrollX -= cameraMove;
+        }
+        if (this.cursors.right.isDown || this.keys.D.isDown) {
+            camera.scrollX += cameraMove;
+        }
+        if (this.cursors.up.isDown || this.keys.W.isDown) {
+            camera.scrollY -= cameraMove;
+        }
+        if (this.cursors.down.isDown || this.keys.S.isDown) {
+            camera.scrollY += cameraMove;
+        }
 
-    const halfWidth = Math.floor(patchWidth / 2);
-    const halfHeight = Math.floor(patchHeight / 2);
-
-    // Draw the dirt patch
-    for (let y = patchCenterY - halfHeight; y <= patchCenterY + halfHeight; y++) {
-        for (let x = patchCenterX - halfWidth; x <= patchCenterX + halfWidth; x++) {
-
-            // Clamp to map bounds
-            if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) continue;
-
-            const tileSetArray = this.tileCategoryMap.DIRT;
-            const tile = weightedRandomTile(tileSetArray);
-
-            this.groundLayer.putTileAt(tile.index, x, y);
-
-            // Optionally → place decor with some chance
-            const decorChance = 0.1; // 10% chance per tile → adjust as desired
-            if (Math.random() < decorChance && !this.decorLayer.hasTileAt(x, y)) {
-                const decorTile = weightedRandomTile(this.tileCategoryMap.DIRT_DECOR);
-                this.decorLayer.putTileAt(decorTile.index, x, y);
-            }
+        for (const entity of this.entities) {
+            entity.update(delta);
         }
     }
-}
 
-}
+    buildPathfindingGrid() {
+        const grid = [];
+        for (let y = 0; y < this.obstacleLayer.height; y++) {
+            const row = [];
+            for (let x = 0; x < this.obstacleLayer.width; x++) {
+                const tile = this.obstacleLayer.getTileAt(x, y);
+                row.push(tile ? 1 : 0);
+            }
+            grid.push(row);
+        }
+        return grid;
+    }
 
 perlinBasedDirt(mapWidth, mapHeight)
 {
-        // === Perlin noise setup ===
+    // === Perlin noise setup ===
    
     const simplex = new SimplexNoise(); // Create a new SimplexNoise instance
-
+    this.isDirtGrid = Array.from({ length: mapHeight }, () =>
+        Array.from({ length: mapWidth }, () => false)
+    );
     const noiseScale = 0.1;     // Lower = bigger smoother blobs
     const dirtThreshold = 0.8;  // Higher = less dirt, lower = more dirt
     const decorChance = 0.1;    // Chance of placing decor inside dirt
@@ -234,7 +428,7 @@ perlinBasedDirt(mapWidth, mapHeight)
 
             if (normalizedNoise > dirtThreshold) {
                 tileSetArray = this.tileCategoryMap.DIRT;
-
+                this.isDirtGrid[y][x] = true; // Mark dirt tile
                 // Optionally → place decor inside dirt
                 if (Math.random() < decorChance && !this.decorLayer.hasTileAt(x, y)) {
                     const decorTile = weightedRandomTile(this.tileCategoryMap.DIRT_DECOR);
@@ -248,6 +442,137 @@ perlinBasedDirt(mapWidth, mapHeight)
         }
     }
 }
+
+applyAutoTileToDirtLayer() {
+    const mapWidth = this.isDirtGrid[0].length;
+    const mapHeight = this.isDirtGrid.length;
+
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            if (this.isDirtGrid[y][x]) {
+                const mask = this.computeDirtBitmask(x, y);
+                let tileIndex = this.dirtAutoTileMap[mask];
+
+                // Fallback if undefined → use fully surrounded
+                if (tileIndex === undefined) {
+                    tileIndex = this.dirtAutoTileMap[15];
+                }
+
+                this.groundLayer.putTileAt(tileIndex, x, y);
+            }
+        }
+    }
+}
+
+
+computeDirtBitmask(x, y) {
+    const grid = this.isDirtGrid;
+    const w = grid[0].length;
+    const h = grid.length;
+
+    let mask = 0;
+
+    if (y > 0         && grid[y - 1][x    ]) mask |= 8; // N
+    if (y < h - 1     && grid[y + 1][x    ]) mask |= 4; // S
+    if (x < w - 1     && grid[y    ][x + 1]) mask |= 2; // E
+    if (x > 0         && grid[y    ][x - 1]) mask |= 1; // W
+
+    return mask;
+}
+
+computeDirtBitmask8(x, y) {
+    const grid = this.isDirtGrid;
+    const w = grid[0].length;
+    const h = grid.length;
+
+    let mask = 0;
+
+    // Diagonals first
+    if (x > 0 && y > 0             && grid[y - 1][x - 1]) mask |= 128; // NW
+    if (x < w - 1 && y > 0         && grid[y - 1][x + 1]) mask |= 16;  // NE
+    if (x > 0 && y < h - 1         && grid[y + 1][x - 1]) mask |= 64;  // SW
+    if (x < w - 1 && y < h - 1     && grid[y + 1][x + 1]) mask |= 32;  // SE
+
+    // Cardinal directions
+    if (y > 0                     && grid[y - 1][x    ]) mask |= 8;    // N
+    if (y < h - 1                 && grid[y + 1][x    ]) mask |= 4;    // S
+    if (x < w - 1                 && grid[y    ][x + 1]) mask |= 2;    // E
+    if (x > 0                     && grid[y    ][x - 1]) mask |= 1;    // W
+
+    return mask;
+}
+
+drawDebugOverlay() {
+    // Clear old overlays first
+    this.debugOverlayGroup.clear(true, true);
+
+    const mapWidth = this.isDirtGrid[0].length;
+    const mapHeight = this.isDirtGrid.length;
+
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            if (this.isDirtGrid[y][x]) {
+const mask = this.computeDirtBitmask(x, y);
+
+                const worldX = this.groundLayer.tileToWorldX(x);
+                const worldY = this.groundLayer.tileToWorldY(y);
+
+                const text = this.add.text(worldX + 2, worldY + 2, `${mask}`, {
+                    fontSize: '10px',
+                    fill: '#ff0000',
+                    backgroundColor: 'rgba(255,255,255,0.5)'
+                });
+
+                text.setDepth(9999); // Always on top
+                this.debugOverlayGroup.add(text);
+            }
+        }
+    }
+}
+
+
+drawDebugOverlay8() {
+    // Clear old overlays first
+    this.debugOverlayGroup.clear(true, true);
+
+    const mapWidth = this.isDirtGrid[0].length;
+    const mapHeight = this.isDirtGrid.length;
+
+    // Store FIRST instance of each mask
+    if (!this.foundMasks8) {
+        this.foundMasks8 = {};
+    }
+
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            if (this.isDirtGrid[y][x]) {
+                const mask = this.computeDirtBitmask8(x, y);
+
+                // Store first occurrence of mask:
+                if (this.foundMasks8[mask] === undefined) {
+                    console.log(`Found new mask: ${mask}`);
+                    this.foundMasks8[mask] = { x, y };
+                }
+
+                const worldX = this.groundLayer.tileToWorldX(x);
+                const worldY = this.groundLayer.tileToWorldY(y);
+
+                const text = this.add.text(worldX + 2, worldY + 2, `${mask}`, {
+                    fontSize: '10px',
+                    fill: '#ff0000',
+                    backgroundColor: 'rgba(255,255,255,0.5)'
+                });
+
+                text.setDepth(9999); // Always on top
+                this.debugOverlayGroup.add(text);
+            }
+        }
+    }
+
+    // Optional: log all found masks at the end
+    console.log('Found dirt masks:', Object.keys(this.foundMasks8).sort((a, b) => a - b));
+}
+
 
 
 findNearestWalkableTile(centerX, centerY, maxRadius = 10) {
@@ -463,65 +788,4 @@ placeObject(layer, x, y, tile) {
         return true;
     }
 
-    update() {
-        const speed = 100;
-        const { W, A, S, D } = this.keys;
-        const cursors = this.cursors;
-
-        let vx = 0;
-        let vy = 0;
-
-        if (W.isDown || cursors.up.isDown) vy -= 1;
-        if (S.isDown || cursors.down.isDown) vy += 1;
-        if (A.isDown || cursors.left.isDown) vx -= 1;
-        if (D.isDown || cursors.right.isDown) vx += 1;
-
-        const len = Math.hypot(vx, vy);
-        if (len > 0) {
-            vx = (vx / len) * speed;
-            vy = (vy / len) * speed;
-
-            const lookaheadDistance = 8;
-            const lookaheadX = this.player.x + Math.sign(vx) * lookaheadDistance;
-            const lookaheadY = this.player.y + Math.sign(vy) * lookaheadDistance;
-
-            if (vx !== 0 && vy === 0) {
-                if (this.checkCollisionAt(lookaheadX, this.player.y)) {
-                    this.player.setVelocity(0);
-                    this.player.anims.stop();
-                    return;
-                }
-            }
-
-            if (vy !== 0 && vx === 0) {
-                if (this.checkCollisionAt(this.player.x, lookaheadY)) {
-                    this.player.setVelocity(0);
-                    this.player.anims.stop();
-                    return;
-                }
-            }
-
-            if (vx !== 0 && vy !== 0) {
-                if (
-                    this.checkCollisionAt(lookaheadX, this.player.y) ||
-                    this.checkCollisionAt(this.player.x, lookaheadY)
-                ) {
-                    this.player.setVelocity(0);
-                    this.player.anims.stop();
-                    return;
-                }
-            }
-
-            this.player.setVelocity(vx, vy);
-
-            if (Math.abs(vx) > Math.abs(vy)) {
-                this.player.anims.play(vx > 0 ? 'walk-right' : 'walk-left', true);
-            } else {
-                this.player.anims.play(vy > 0 ? 'walk-down' : 'walk-up', true);
-            }
-        } else {
-            this.player.setVelocity(0);
-            this.player.anims.stop();
-        }
-    }
 }
