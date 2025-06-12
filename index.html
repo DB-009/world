@@ -40,11 +40,17 @@
                 color: inherit;
             }
         </style>
+        <script src="https://cdn.jsdelivr.net/npm/easystarjs@0.4.4/bin/easystar-0.4.4.min.js"></script>
+
     </head>
     <body>
         <div id="game-container"></div>
         <script src="./phaser.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.js"></script>
         <script type="module" src="./src/main.js"></script>
+        <script>
+            document.addEventListener('contextmenu', event => event.preventDefault());
+
+        </script>
     </body>
     </html>
