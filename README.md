@@ -1,23 +1,39 @@
-## world
+# Colony Sim
 
-Hello! I’m creating a browser-based pixel art colony sim (Rimworld-inspired) and need a JavaScript/TypeScript developer to build the MVP. Experience with Phaser, PixiJS, or a similar framework is required, along with:
+A browser-based pixel art colony simulation game built with Phaser.js, inspired by Rimworld.
 
-- **Core systems:**  
-  - Procedural ground map generation  
-  - A controllable character that moves with WASD keys, using both idle and running animations from the asset pack  
-- **Pixel art integration:**  
-  - Use the “Little Dreamyland Asset Pack” (https://starmixu.itch.io/little-dreamyland-asset-pack) for sprites, tiles, and animations  
+## Features
 
-**Responsibilities:**  
-- Review design docs and implement a prototype featuring:  
-  - A procedurally generated ground map (grid-based tiles sourced from the asset pack)  
-  - A character that moves with WASD keys, using idle and running animations from the asset pack  
+- **Procedural World Generation**: 100x100 tile maps with Perlin noise terrain
+- **Pathfinding**: A* navigation around obstacles  
+- **Pixel Art Graphics**: Using the "Little Dreamyland Asset Pack"
+- **Auto-tiling**: Seamless grass-to-dirt terrain transitions
 
-**Compensation:**  
-- $20–$40/hr (negotiable) or fixed-fee milestones. Potential for ongoing work.
+## Getting Started
 
-**Timeline:**  
-- Immediate start. MVP completion in 1 week.
+1. **Clone and install**:
+   ```bash
+   git clone https://github.com/super3/world
+   cd world
+   npm install
+   ```
 
-**Submission:**  
-- Completed MVP should be submitted as a pull request to https://github.com/super3/world  
+2. **Run locally**:
+   ```bash
+   python -m http.server 8000
+   # or
+   npx http-server
+   ```
+
+3. **Open** `http://localhost:8000` in your browser
+
+## Controls
+
+- **Left Mouse**: Select character
+- **Right Mouse**: Move selected character  
+- **WASD/Arrows**: Pan camera
+- **O/I/P Keys**: Debug overlays
+
+## License
+
+MIT License. Graphics from [Little Dreamyland Asset Pack](https://starmixu.itch.io/little-dreamyland-asset-pack) by StarMixu.
