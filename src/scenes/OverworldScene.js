@@ -337,10 +337,17 @@ console.log(this.dirtAutoTileMap8);
 
                 if (clickedEntity) {
                     if (this.selectedEntity !== clickedEntity) {
-                        this.selectedEntity.setSelected(false);
+                        if(this.selectedEntity != null)
+                            this.selectedEntity.setSelected(false);
+
                         this.selectedEntity = clickedEntity;
                         this.selectedEntity.setSelected(true);
                     }
+                }
+                else if (pointer.leftButtonDown() && this.selectedEntity != null) 
+                {
+                    this.selectedEntity.setSelected(false);
+                    this.selectedEntity = null;
                 }
 
             } else if (pointer.rightButtonDown()) {
