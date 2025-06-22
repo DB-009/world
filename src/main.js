@@ -16,7 +16,7 @@ const config = {
     scene: [OverworldScene],
     scale: {
         mode: Phaser.Scale.NONE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+
     }
 };
 
