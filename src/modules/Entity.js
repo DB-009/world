@@ -1,11 +1,10 @@
 export class Entity {
-    constructor(scene, x, y, runTexture, idleTexture, pathfinder) {
+    constructor(scene, x, y, spriteKey, pathfinder) {
         this.scene = scene;
-        this.runTexture = runTexture;
-        this.idleTexture = idleTexture;
+        this.spriteKey = spriteKey;
         this.pathfinder = pathfinder;
 
-        this.sprite = scene.physics.add.sprite(x, y, runTexture, 0);
+        this.sprite = scene.physics.add.sprite(x, y, spriteKey, 0);
         this.sprite.setCollideWorldBounds(true);
 
         this.moveSpeed = 100; // pixels per second
@@ -23,7 +22,7 @@ export class Entity {
 
     setSelected(isSelected) {
         this.isSelected = isSelected;
-        this.sprite.setTint(isSelected ? 0xffff00 : 0xffffff);
+        //this.sprite.setTint(isSelected ? 0xffff00 : 0xffffff);
     }
 
     moveTo(worldX, worldY) {
@@ -73,7 +72,7 @@ export class Entity {
                     if (!this.isIdle && !this.idleTimer) {
                         this.idleTimer = setTimeout(() => {
                             this.isIdle = true;
-                            this.sprite.anims.play(`idle-${this.lastMoveDirection}`, true);
+                            this.sprite.anims.play(`idle-${this.spriteKey}`, true);
                         }, this.idleDelay);
                     }
                     return;
@@ -90,20 +89,31 @@ export class Entity {
                 const vy = (dy / distance) * this.moveSpeed;
                 this.sprite.setVelocity(vx, vy);
 
+                
+                
                 if (Math.abs(vx) > Math.abs(vy)) {
                     this.lastMoveDirection = vx > 0 ? 'right' : 'left';
                 } else {
                     this.lastMoveDirection = vy > 0 ? 'down' : 'up';
                 }
 
-                this.sprite.anims.play(`walk-${this.lastMoveDirection}`, true);
+                this.sprite.anims.play(`walk-${this.spriteKey}`, true);                
+
+                if (Math.abs(vx) > Math.abs(vy)) {
+                    this.lastMoveDirection = vx > 0 ? 'right' : 'left';
+                }
+
+                this.sprite.flipX = this.lastMoveDirection === 'left';              
             }
         } else {
             this.sprite.setVelocity(0);
             if (!this.isIdle && !this.idleTimer) {
                 this.idleTimer = setTimeout(() => {
                     this.isIdle = true;
-                    this.sprite.anims.play(`idle-${this.lastMoveDirection}`, true);
+                    
+                    //this.sprite.anims.play(`idle-${this.lastMoveDirection}`, true);
+                    this.sprite.anims.play(`idle-${this.spriteKey}`, true);
+                    
                 }, this.idleDelay);
             }
         }
