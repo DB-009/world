@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.11.2" name="Obstacles" tilewidth="16" tileheight="16" tilecount="252" columns="21">
- <image source="../_Random/Dreamyland_assets/Tileset/Nature Tileset.png" width="336" height="192"/>
+ <image source="../Dreamyland_assets/Tileset/Nature Tileset.png" width="336" height="192"/>
  <tile id="0">
   <properties>
    <property name="blockDown" type="bool" value="false"/>

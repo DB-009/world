@@ -159,7 +159,7 @@
         {
          "columns":21,
          "firstgid":1,
-         "image":"..\/_Random\/Dreamyland_assets\/Tileset\/Nature Tileset.png",
+         "image":"..\/Dreamyland_assets\/Tileset\/Nature Tileset.png",
          "imageheight":192,
          "imagewidth":336,
          "margin":0,
@@ -7486,7 +7486,7 @@
         {
          "columns":21,
          "firstgid":253,
-         "image":"..\/_Random\/Dreamyland_assets\/Tileset\/Autotile Grass and Dirt Path Tileset.png",
+         "image":"..\/Dreamyland_assets\/Tileset\/Autotile Grass and Dirt Path Tileset.png",
          "imageheight":176,
          "imagewidth":336,
          "margin":0,
@@ -14203,7 +14203,7 @@
         {
          "columns":11,
          "firstgid":484,
-         "image":"..\/_Random\/Dreamyland_assets\/Tileset\/Tileset floor detail.png",
+         "image":"..\/Dreamyland_assets\/Tileset\/Tileset floor detail.png",
          "imageheight":80,
          "imagewidth":176,
          "margin":0,

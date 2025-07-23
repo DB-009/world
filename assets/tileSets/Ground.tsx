@@ -3,7 +3,7 @@
  <editorsettings>
   <export target="AutotileGrassDirt.json" format="json"/>
  </editorsettings>
- <image source="../_Random/Dreamyland_assets/Tileset/Autotile Grass and Dirt Path Tileset.png" width="336" height="176"/>
+ <image source="../Dreamyland_assets/Tileset/Autotile Grass and Dirt Path Tileset.png" width="336" height="176"/>
  <tile id="0">
   <properties>
    <property name="blockDown" type="bool" value="false"/>
