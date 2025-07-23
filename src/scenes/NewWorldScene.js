@@ -15,20 +15,39 @@ export class NewWorldScene extends Phaser.Scene {
     preload() {
         // Load player
 
-        this.load.spritesheet('npc1', 'assets/npc/male/NPC 1.png', {
-            frameWidth: 32,
-            frameHeight: 32
+        // Body and Hair for idle and run
+        this.load.spritesheet('base_idle', 'assets/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png', {
+            frameWidth: 96,
+            frameHeight: 64
+        });
+        this.load.spritesheet('base_run', 'assets/Sunnyside_World_Assets/Characters/Human/RUN/base_run_strip8.png', {
+            frameWidth: 96,
+            frameHeight: 64
         });
 
-        this.load.spritesheet('npc2', 'assets/npc/female/NPC 2.png', {
-            frameWidth: 32,
-            frameHeight: 32
+        this.hairstyles = ["bowl","curly","long","mop","short","spikey"];
+
+        this.hairstyles.forEach(hair => {
+          this.load.spritesheet(`${hair}hair_idle`, `assets/Sunnyside_World_Assets/Characters/Human/IDLE/${hair}hair_idle_strip9.png`, {
+              frameWidth: 96,
+              frameHeight: 64
+          });
+          this.load.spritesheet(`${hair}hair_run`, `assets/Sunnyside_World_Assets/Characters/Human/RUN/${hair}hair_run_strip8.png`, {
+              frameWidth: 96,
+              frameHeight: 64
+          });
         });
 
-        this.load.spritesheet('npc3', 'assets/npc/female/NPC 3.png', {
-            frameWidth: 32,
-            frameHeight: 32
+        this.load.spritesheet('tools_idle', 'assets/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png', {
+            frameWidth: 96,
+            frameHeight: 64
         });
+        this.load.spritesheet('tools_run', 'assets/Sunnyside_World_Assets/Characters/Human/RUN/tools_run_strip8.png', {
+            frameWidth: 96,
+            frameHeight: 64
+        });
+
+
 
         // Load tileset images
         this.load.image('tiles-grass-dirt', 'assets/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png');
@@ -113,14 +132,14 @@ export class NewWorldScene extends Phaser.Scene {
         this.treeCollisionLayer = map.createBlankLayer('TreeCollisions', tilesetMain, 0, 0);
         this.treeGroup = this.add.group();
         
-        this.buildingLayer.setDepth(500);
-        this.buildingLayer2.setDepth(600);
+        this.buildingLayer.setDepth(200);
+        this.buildingLayer2.setDepth(210);
 
         this.cropLayerBottom = map.createBlankLayer('CropBottom', tilesetMain, 0, 0);
         this.cropLayerTop = map.createBlankLayer('CropTop', tilesetMain, 0, 0);
 
-        this.cropLayerBottom.setDepth(200); 
-        this.cropLayerTop.setDepth(800);   
+        this.cropLayerBottom.setDepth(240); 
+        this.cropLayerTop.setDepth(250);   
 
         this.populateLayerFromArray(this.groundLayer, groundLayer);
         this.populateLayerFromArray(this.groundLayer2, groundLayer2);
@@ -233,51 +252,8 @@ export class NewWorldScene extends Phaser.Scene {
 
         this.placeCropTile(1, 9, 1075, 1139);
 
-        // Animations
-        //bunny logic
-        /*
-        const directions = ['up', 'right', 'left', 'down'];
-        directions.forEach((dir, row) => {
-            this.anims.create({
-                key: `walk-${dir}`,
-                frames: this.anims.generateFrameNumbers('bunny', { start: row * 8, end: row * 8 + 7 }),
-                frameRate: 10,
-                repeat: -1
-            });
-        });
 
-        directions.forEach((dir, row) => {
-            this.anims.create({
-                key: `idle-${dir}`,
-                frames: this.anims.generateFrameNumbers('bunny-idle', { start: row * 5, end: row * 5 + 4 }),
-                frameRate: 5,
-                repeat: -1
-            });
-        });
-        */
 
-        const spriteKeys = ["npc1","npc2","npc3"];
-        for(let x = 0; x < spriteKeys.length;x++)
-        {
-          if (!this.anims.exists('walk-'+spriteKeys[x])) {
-              this.anims.create({
-                  key: 'walk-'+spriteKeys[x],
-                  frames: this.anims.generateFrameNumbers(spriteKeys[x], { start: 0, end: 3 }),
-                  frameRate: 8,
-                  repeat: -1
-              });
-          }
-
-          if (!this.anims.exists('idle-'+spriteKeys[x])) {
-              this.anims.create({
-                  key: 'idle-'+spriteKeys[x],
-                  frames: this.anims.generateFrameNumbers(spriteKeys[x], { start: 5, end: 7 }),
-                  frameRate: 6,
-                  repeat: -1
-              });
-          }
-        }
-        
         // Pathfinding setup
         this.pathfinder = new EasyStar.js();
 
@@ -288,17 +264,37 @@ export class NewWorldScene extends Phaser.Scene {
         //const spawnPos1 = this.findNearestWalkableTile(centerX, centerY);
         //const spawnPos2 = this.findNearestWalkableTile(centerX + 5, centerY + 5);
 
-        const spawnPos1 = this.findNearestWalkableTile(10, 7);
-        const spawnPos2 = this.findNearestWalkableTile(12 , 9);
- 
+        // Animations
+        this.createBodyAnimations(this, 'base', 9, 8);
 
-        const entity1 = new Entity(this, spawnPos1.x, spawnPos1.y, 'npc1', this.pathfinder);
-        const entity2 = new Entity(this, spawnPos2.x, spawnPos2.y, 'npc2', this.pathfinder);
+        this.hairstyles.forEach(hair => {
+        this.createBodyAnimations(this, `${hair}hair`, 9, 8);
+        });
 
-        this.entities.push(entity1);
-        this.entities.push(entity2);
+        this.createBodyAnimations(this, 'tools', 9, 8);
 
-        this.selectedEntity = entity1;
+
+        const spawn1 = this.findNearestWalkableTile(10, 7);
+        const player1 = new Entity(this, spawn1.x, spawn1.y, {
+            base: 'base',
+            hair: 'mop'
+        }, this.pathfinder);
+
+        this.entities.push(player1);
+
+        const spawn2 = this.findNearestWalkableTile(10, 9);
+        const player2 = new Entity(this, spawn2.x, spawn2.y, {
+            base: 'base',
+            hair: 'long'
+        }, this.pathfinder);
+
+        this.entities.push(player1);
+        this.entities.push(player2);
+
+
+
+
+        this.selectedEntity = player1;
         this.selectedEntity.setSelected(true);
 
         this.physics.world.setBounds(0, 0, mapWidth * tileSize, mapHeight * tileSize);
@@ -390,9 +386,9 @@ update(time, delta) {
 
   this.entities.forEach(entity => {
     const playerX = entity.sprite.x;
-    const playerBottomY = entity.sprite.getBottomCenter().y;
+    const playerBottomY = entity.sprite.y + entity.visualOffsetY;
 
-    let depth = playerBottomY;
+    let depth = entity.baseDepth;
 
     for (const zone of this.walkBehindZones) {
       if (
@@ -409,7 +405,9 @@ update(time, delta) {
       }
     }
 
-    entity.sprite.setDepth(depth);
+entity.sprite.setDepth(depth);
+
+    
   });
 
 
@@ -426,7 +424,7 @@ update(time, delta) {
   }
 
   if (this.selectedEntity) {
-    const bottomY = this.selectedEntity.sprite.getBottomCenter().y;
+  const bottomY =  this.selectedEntity.sprite.y + this.selectedEntity.visualOffsetY;
     this.debugGraphics.lineStyle(1, 0x00ff00, 1);
     this.debugGraphics.strokeLineShape(new Phaser.Geom.Line(0, bottomY, this.scale.width, bottomY));
   }
@@ -436,11 +434,32 @@ update(time, delta) {
       if (this.selectedEntity) {
           this.selectionPointer.setVisible(true);
           this.selectionPointer.x = this.selectedEntity.sprite.x;
-          this.selectionPointer.y = this.selectedEntity.sprite.y - 8; 
+          this.selectionPointer.y = this.selectedEntity.sprite.y - 12; 
       } else {
           this.selectionPointer.setVisible(false);
       }
   }
+}
+
+
+createBodyAnimations(scene, keyPrefix, idleFrames, runFrames) {
+    if (!scene.anims.exists(`${keyPrefix}_idle`)) {
+        scene.anims.create({
+            key: `${keyPrefix}_idle`,
+            frames: scene.anims.generateFrameNumbers(`${keyPrefix}_idle`, { start: 0, end: idleFrames - 1 }),
+            frameRate: 18,
+            repeat: -1
+        });
+    }
+
+    if (!scene.anims.exists(`${keyPrefix}_run`)) {
+        scene.anims.create({
+            key: `${keyPrefix}_run`,
+            frames: scene.anims.generateFrameNumbers(`${keyPrefix}_run`, { start: 0, end: runFrames - 1 }),
+            frameRate: 16,
+            repeat: -1
+        });
+    }
 }
 
 populateLayerFromArray(layer, array) {
