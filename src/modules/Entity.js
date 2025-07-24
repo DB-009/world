@@ -1,28 +1,46 @@
 export class Entity {
-    constructor(scene, x, y, spriteKey, pathfinder) {
+    constructor(scene, x, y, config, pathfinder) {
         this.scene = scene;
-        this.spriteKey = spriteKey;
         this.pathfinder = pathfinder;
+        this.baseDepth = 1000;
+        this.spriteKey = config.base;
+        this.hairKey = config.hair;
+        this.runSpeed = 100;
+        this.visualOffsetY = 10; // Adjust this based on where the feet actually are
+        //8 = half of 16 sprite + 2 for padding on wal behind detection
 
-        this.sprite = scene.physics.add.sprite(x, y, spriteKey, 0);
-        this.sprite.setCollideWorldBounds(true);
+        // Create base and hair sprites
+        this.baseSprite = scene.add.sprite(0, 0, `${this.spriteKey}_idle`, 0);
+        this.hairSprite = scene.add.sprite(0, 0, `${this.hairKey}hair_idle`, 0);
 
-        this.moveSpeed = 100; // pixels per second
+        this.baseSprite.setDepth(this.baseDepth);
+        // Put hair above base
+        this.hairSprite.setDepth(this.baseDepth+1);
+
+        this.toolSprite = scene.add.sprite(0, 0, `tools_idle`, 0);
+        this.toolSprite.setDepth(this.baseDepth+2); // Above hair
+
+        this.container = scene.add.container(x, y, [this.baseSprite, this.hairSprite, this.toolSprite]);
+        scene.physics.add.existing(this.container);
+        this.sprite = this.container; // Alias for compatibility with rest of code
+
+        // Physics settings
+        this.container.body.setCollideWorldBounds(true);
+
         this.path = [];
         this.targetTile = null;
         this.gridGenerated = false;
 
-        this.lastMoveDirection = 'down';
+        this.lastMoveDirection = 'right';
         this.idleTimer = null;
-        this.idleDelay = 1500; // ms
+        this.idleDelay = 500;
         this.isIdle = false;
-
         this.isSelected = false;
+        this.setDepth(this.baseDepth);
     }
 
     setSelected(isSelected) {
         this.isSelected = isSelected;
-        //this.sprite.setTint(isSelected ? 0xffff00 : 0xffffff);
     }
 
     moveTo(worldX, worldY) {
@@ -32,13 +50,12 @@ export class Entity {
         if (!this.gridGenerated) {
             const grid = this.scene.buildPathfindingGrid();
             this.pathfinder.setGrid(grid);
-
             this.pathfinder.setAcceptableTiles([0]);
             this.gridGenerated = true;
         }
 
-        const currentTileX = this.scene.groundLayer.worldToTileX(this.sprite.x);
-        const currentTileY = this.scene.groundLayer.worldToTileY(this.sprite.y);
+        const currentTileX = this.scene.groundLayer.worldToTileX(this.container.x);
+        const currentTileY = this.scene.groundLayer.worldToTileY(this.container.y);
 
         this.pathfinder.findPath(currentTileX, currentTileY, tileX, tileY, (path) => {
             if (path && path.length > 0) {
@@ -57,65 +74,74 @@ export class Entity {
             const tileWorldX = this.scene.groundLayer.tileToWorldX(this.targetTile.x) + 8;
             const tileWorldY = this.scene.groundLayer.tileToWorldY(this.targetTile.y) + 8;
 
-            const dx = tileWorldX - this.sprite.x;
-            const dy = tileWorldY - this.sprite.y;
-
+            const dx = tileWorldX - this.container.x;
+            const dy = tileWorldY - this.container.y;
             const distance = Math.hypot(dx, dy);
+
             if (distance < 2) {
                 if (this.path.length > 0) {
                     this.targetTile = this.path.shift();
                 } else {
                     this.targetTile = null;
-                    this.sprite.setVelocity(0);
-                    this.sprite.anims.stop();
+                    this.container.body.setVelocity(0);
 
                     if (!this.isIdle && !this.idleTimer) {
                         this.idleTimer = setTimeout(() => {
                             this.isIdle = true;
-                            this.sprite.anims.play(`idle-${this.spriteKey}`, true);
+                            this.baseSprite.anims.play(`${this.spriteKey}_idle`, true);
+                            this.hairSprite.anims.play(`${this.hairKey}hair_idle`, true);
+                            this.toolSprite.anims.play(`tools_idle`, true);
+
+                            const flip = this.lastMoveDirection === 'left';
+                            this.baseSprite.flipX = flip;
+                            this.hairSprite.flipX = flip;
+                            this.toolSprite.flipX = flip;
                         }, this.idleDelay);
                     }
                     return;
                 }
             } else {
-                // Reset idle
                 this.isIdle = false;
                 if (this.idleTimer) {
                     clearTimeout(this.idleTimer);
                     this.idleTimer = null;
                 }
 
-                const vx = (dx / distance) * this.moveSpeed;
-                const vy = (dy / distance) * this.moveSpeed;
-                this.sprite.setVelocity(vx, vy);
+                const vx = (dx / distance) * this.runSpeed;
+                const vy = (dy / distance) * this.runSpeed;
 
-                
-                
-                if (Math.abs(vx) > Math.abs(vy)) {
-                    this.lastMoveDirection = vx > 0 ? 'right' : 'left';
-                } else {
-                    this.lastMoveDirection = vy > 0 ? 'down' : 'up';
-                }
+                this.container.body.setVelocity(vx, vy);
 
-                this.sprite.anims.play(`walk-${this.spriteKey}`, true);                
+                this.baseSprite.anims.play(`${this.spriteKey}_run`, true);
+                this.hairSprite.anims.play(`${this.hairKey}hair_run`, true);
+                this.toolSprite.anims.play(`tools_run`, true);
 
                 if (Math.abs(vx) > Math.abs(vy)) {
                     this.lastMoveDirection = vx > 0 ? 'right' : 'left';
+                    const flip = this.lastMoveDirection === 'left';
+                    this.baseSprite.flipX = flip;
+                    this.hairSprite.flipX = flip;
+                    this.toolSprite.flipX = flip;
                 }
-
-                this.sprite.flipX = this.lastMoveDirection === 'left';              
             }
         } else {
-            this.sprite.setVelocity(0);
+            this.container.body.setVelocity(0);
             if (!this.isIdle && !this.idleTimer) {
                 this.idleTimer = setTimeout(() => {
                     this.isIdle = true;
-                    
-                    //this.sprite.anims.play(`idle-${this.lastMoveDirection}`, true);
-                    this.sprite.anims.play(`idle-${this.spriteKey}`, true);
-                    
+                    this.baseSprite.anims.play(`${this.spriteKey}_idle`, true);
+                    this.hairSprite.anims.play(`${this.hairKey}hair_idle`, true);
+                    this.toolSprite.anims.play(`tools_idle`, true);
+                    const flip = this.lastMoveDirection === 'left';
+                    this.baseSprite.flipX = flip;
+                    this.hairSprite.flipX = flip;
+                    this.toolSprite.flipX = flip;
                 }, this.idleDelay);
             }
         }
+    }
+
+    setDepth(baseDepth) {
+        this.container.setDepth(baseDepth);
     }
 }

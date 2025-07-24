@@ -15,20 +15,55 @@ export class NewWorldScene extends Phaser.Scene {
     preload() {
         // Load player
 
-        this.load.spritesheet('npc1', 'assets/npc/male/NPC 1.png', {
-            frameWidth: 32,
-            frameHeight: 32
+function decrementArray(arr) {
+  return arr.map(n => n - 1);
+}
+
+// Example usage:
+const input = [0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 2166, 0, 0,
+0, 0, 0, 0, 2163, 2230, 0,
+0, 0, 0, 0, 2227, 2163, 0,
+0, 0, 0, 0, 0, 0, 0
+
+]; // replace this with your array
+console.log(decrementArray(input));
+
+
+        // Body and Hair for idle and run
+        this.load.spritesheet('base_idle', 'assets/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png', {
+            frameWidth: 96,
+            frameHeight: 64
+        });
+        this.load.spritesheet('base_run', 'assets/Sunnyside_World_Assets/Characters/Human/RUN/base_run_strip8.png', {
+            frameWidth: 96,
+            frameHeight: 64
         });
 
-        this.load.spritesheet('npc2', 'assets/npc/female/NPC 2.png', {
-            frameWidth: 32,
-            frameHeight: 32
+        this.hairstyles = ["bowl","curly","long","mop","short","spikey"];
+
+        this.hairstyles.forEach(hair => {
+          this.load.spritesheet(`${hair}hair_idle`, `assets/Sunnyside_World_Assets/Characters/Human/IDLE/${hair}hair_idle_strip9.png`, {
+              frameWidth: 96,
+              frameHeight: 64
+          });
+          this.load.spritesheet(`${hair}hair_run`, `assets/Sunnyside_World_Assets/Characters/Human/RUN/${hair}hair_run_strip8.png`, {
+              frameWidth: 96,
+              frameHeight: 64
+          });
         });
 
-        this.load.spritesheet('npc3', 'assets/npc/female/NPC 3.png', {
-            frameWidth: 32,
-            frameHeight: 32
+        this.load.spritesheet('tools_idle', 'assets/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png', {
+            frameWidth: 96,
+            frameHeight: 64
         });
+        this.load.spritesheet('tools_run', 'assets/Sunnyside_World_Assets/Characters/Human/RUN/tools_run_strip8.png', {
+            frameWidth: 96,
+            frameHeight: 64
+        });
+
+
 
         // Load tileset images
         this.load.image('tiles-grass-dirt', 'assets/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png');
@@ -106,36 +141,50 @@ export class NewWorldScene extends Phaser.Scene {
         this.obstacleLayer2 = map.createBlankLayer('Obstacles2', tilesetMain, 0, 0);
         this.decorLayer = map.createBlankLayer('Decor', tilesetMain, 0, 0);
         this.buildingLayer = map.createBlankLayer('Buildings', tilesetMain, 0, 0);
-        this.buildingLayer2 = map.createBlankLayer('Buildings2', tilesetMain, 0, 0);
+        this.buildingLayer_inside_floor = map.createBlankLayer('Buildings_inside_floor', tilesetMain, 0, 0);
+        this.buildingLayer_inside_decor = map.createBlankLayer('Buildings_inside_decor', tilesetMain, 0, 0);
+        this.buildingLayer_inside_decor2 = map.createBlankLayer('Buildings_inside_decor2', tilesetMain, 0, 0);
+        this.buildingLayer_inside = map.createBlankLayer('Buildings_inside', tilesetMain, 0, 0);
 
         this.buildingCollisionLayer = map.createBlankLayer('BuildingCollisions', tilesetMain, 0, 0);
         this.buildingCollisionLayer.setAlpha(0);
         this.treeCollisionLayer = map.createBlankLayer('TreeCollisions', tilesetMain, 0, 0);
         this.treeGroup = this.add.group();
         
-        this.buildingLayer.setDepth(500);
-        this.buildingLayer2.setDepth(600);
+        this.buildingLayer.setDepth(200);
+        this.buildingLayer_inside.setDepth(196);
+        this.buildingLayer_inside_floor.setDepth(197);
+        this.buildingLayer_inside_decor.setDepth(198);
+        this.buildingLayer_inside_decor2.setDepth(199);
 
         this.cropLayerBottom = map.createBlankLayer('CropBottom', tilesetMain, 0, 0);
         this.cropLayerTop = map.createBlankLayer('CropTop', tilesetMain, 0, 0);
 
-        this.cropLayerBottom.setDepth(200); 
-        this.cropLayerTop.setDepth(800);   
+        this.cropLayerBottom.setDepth(240); 
+        this.cropLayerTop.setDepth(250);   
 
         this.populateLayerFromArray(this.groundLayer, groundLayer);
         this.populateLayerFromArray(this.groundLayer2, groundLayer2);
         this.populateLayerFromArray(this.obstacleLayer, obstacleLayer);
         this.populateLayerFromArray(this.decorLayer, decorLayer);
 
-        placeBuildingTiles(this.buildingLayer, 23, 1, building_blue_small.tiles);
-        this.markBuildingObstacles(building_blue_small, 23, 1);
+this.enterableBuildings = [];
+ this.walkBehindZones = [];
 
-        placeBuildingTiles(this.buildingLayer2, 5, 1, building_blue_big.tiles);
-        this.markBuildingObstacles(building_blue_big, 5, 1);
+        //placeBuildingTiles(this, 23, 1, building_blue_small);
+        //this.markBuildingObstacles(building_blue_small, 23, 1);
+        //this.markWalkBehindDepthZones(building_blue_small, 23, 1,5);
 
-        this.walkBehindZones = [];
-        this.markWalkBehindDepthZones(building_blue_small, 23, 1,5);
-        this.markWalkBehindDepthZones(building_blue_big, 5, 1,6);
+
+        //placeBuildingTiles(this, 5, 1, building_blue_big);
+        //this.markBuildingObstacles(building_blue_big, 5, 1);
+        //this.markWalkBehindDepthZones(building_blue_big, 5, 1,6);
+
+        //this.placeEnterableBuilding(5, 1, building_blue_big);
+
+       
+        
+        
 
         this.placeTreeSprite(1, 2, 0, {
           behindRows: 2,
@@ -233,51 +282,8 @@ export class NewWorldScene extends Phaser.Scene {
 
         this.placeCropTile(1, 9, 1075, 1139);
 
-        // Animations
-        //bunny logic
-        /*
-        const directions = ['up', 'right', 'left', 'down'];
-        directions.forEach((dir, row) => {
-            this.anims.create({
-                key: `walk-${dir}`,
-                frames: this.anims.generateFrameNumbers('bunny', { start: row * 8, end: row * 8 + 7 }),
-                frameRate: 10,
-                repeat: -1
-            });
-        });
 
-        directions.forEach((dir, row) => {
-            this.anims.create({
-                key: `idle-${dir}`,
-                frames: this.anims.generateFrameNumbers('bunny-idle', { start: row * 5, end: row * 5 + 4 }),
-                frameRate: 5,
-                repeat: -1
-            });
-        });
-        */
 
-        const spriteKeys = ["npc1","npc2","npc3"];
-        for(let x = 0; x < spriteKeys.length;x++)
-        {
-          if (!this.anims.exists('walk-'+spriteKeys[x])) {
-              this.anims.create({
-                  key: 'walk-'+spriteKeys[x],
-                  frames: this.anims.generateFrameNumbers(spriteKeys[x], { start: 0, end: 3 }),
-                  frameRate: 8,
-                  repeat: -1
-              });
-          }
-
-          if (!this.anims.exists('idle-'+spriteKeys[x])) {
-              this.anims.create({
-                  key: 'idle-'+spriteKeys[x],
-                  frames: this.anims.generateFrameNumbers(spriteKeys[x], { start: 5, end: 7 }),
-                  frameRate: 6,
-                  repeat: -1
-              });
-          }
-        }
-        
         // Pathfinding setup
         this.pathfinder = new EasyStar.js();
 
@@ -288,17 +294,37 @@ export class NewWorldScene extends Phaser.Scene {
         //const spawnPos1 = this.findNearestWalkableTile(centerX, centerY);
         //const spawnPos2 = this.findNearestWalkableTile(centerX + 5, centerY + 5);
 
-        const spawnPos1 = this.findNearestWalkableTile(10, 7);
-        const spawnPos2 = this.findNearestWalkableTile(12 , 9);
- 
+        // Animations
+        this.createBodyAnimations(this, 'base', 9, 8);
 
-        const entity1 = new Entity(this, spawnPos1.x, spawnPos1.y, 'npc1', this.pathfinder);
-        const entity2 = new Entity(this, spawnPos2.x, spawnPos2.y, 'npc2', this.pathfinder);
+        this.hairstyles.forEach(hair => {
+        this.createBodyAnimations(this, `${hair}hair`, 9, 8);
+        });
 
-        this.entities.push(entity1);
-        this.entities.push(entity2);
+        this.createBodyAnimations(this, 'tools', 9, 8);
 
-        this.selectedEntity = entity1;
+
+this.initBuildingManager();
+
+        const spawn1 = this.findNearestWalkableTile(10, 7);
+        const player1 = new Entity(this, spawn1.x, spawn1.y, {
+            base: 'base',
+            hair: 'mop'
+        }, this.pathfinder);
+
+        const spawn2 = this.findNearestWalkableTile(10, 9);
+        const player2 = new Entity(this, spawn2.x, spawn2.y, {
+            base: 'base',
+            hair: 'long'
+        }, this.pathfinder);
+
+        this.entities.push(player1);
+        this.entities.push(player2);
+
+
+
+
+        this.selectedEntity = player1;
         this.selectedEntity.setSelected(true);
 
         this.physics.world.setBounds(0, 0, mapWidth * tileSize, mapHeight * tileSize);
@@ -390,9 +416,9 @@ update(time, delta) {
 
   this.entities.forEach(entity => {
     const playerX = entity.sprite.x;
-    const playerBottomY = entity.sprite.getBottomCenter().y;
+    const playerBottomY = entity.sprite.y + entity.visualOffsetY;
 
-    let depth = playerBottomY;
+    let depth = entity.baseDepth;
 
     for (const zone of this.walkBehindZones) {
       if (
@@ -409,7 +435,9 @@ update(time, delta) {
       }
     }
 
-    entity.sprite.setDepth(depth);
+entity.sprite.setDepth(depth);
+
+    
   });
 
 
@@ -426,7 +454,7 @@ update(time, delta) {
   }
 
   if (this.selectedEntity) {
-    const bottomY = this.selectedEntity.sprite.getBottomCenter().y;
+  const bottomY =  this.selectedEntity.sprite.y + this.selectedEntity.visualOffsetY;
     this.debugGraphics.lineStyle(1, 0x00ff00, 1);
     this.debugGraphics.strokeLineShape(new Phaser.Geom.Line(0, bottomY, this.scale.width, bottomY));
   }
@@ -436,11 +464,58 @@ update(time, delta) {
       if (this.selectedEntity) {
           this.selectionPointer.setVisible(true);
           this.selectionPointer.x = this.selectedEntity.sprite.x;
-          this.selectionPointer.y = this.selectedEntity.sprite.y - 8; 
+          this.selectionPointer.y = this.selectedEntity.sprite.y - 12; 
       } else {
           this.selectionPointer.setVisible(false);
       }
   }
+
+this.buildings.forEach(building => {
+    const bounds = {
+        x: building.x * 16,
+        y: building.y * 16,
+        width: building.width * 16,
+        height: building.height * 16
+    };
+
+    const anyInside = this.entities.some(e =>
+        Phaser.Geom.Rectangle.Contains(
+            new Phaser.Geom.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height),
+            e.sprite.x,
+            e.sprite.y
+        )
+    );
+
+    if (anyInside && building.visible && !building.isFadingOut) {
+        this.enterBuilding(building);
+    } else if (!anyInside && !building.visible && !building.isFadingOut) {
+        this.exitBuilding(building);
+    }
+});
+
+
+
+}
+
+
+createBodyAnimations(scene, keyPrefix, idleFrames, runFrames) {
+    if (!scene.anims.exists(`${keyPrefix}_idle`)) {
+        scene.anims.create({
+            key: `${keyPrefix}_idle`,
+            frames: scene.anims.generateFrameNumbers(`${keyPrefix}_idle`, { start: 0, end: idleFrames - 1 }),
+            frameRate: 18,
+            repeat: -1
+        });
+    }
+
+    if (!scene.anims.exists(`${keyPrefix}_run`)) {
+        scene.anims.create({
+            key: `${keyPrefix}_run`,
+            frames: scene.anims.generateFrameNumbers(`${keyPrefix}_run`, { start: 0, end: runFrames - 1 }),
+            frameRate: 16,
+            repeat: -1
+        });
+    }
 }
 
 populateLayerFromArray(layer, array) {
@@ -453,6 +528,18 @@ populateLayerFromArray(layer, array) {
         }
     }
 }
+
+populateLayoutToLayer(layer, tileArray, startX, startY) {
+    for (let y = 0; y < tileArray.length; y++) {
+        for (let x = 0; x < tileArray[y].length; x++) {
+            const tileId = tileArray[y][x];
+            if (tileId !== -1) {
+                layer.putTileAt(tileId, startX + x, startY + y);
+            }
+        }
+    }
+}
+
 
 placeTreeSprite(tileX, tileY, frame = 0, options = { behindRows: 2, blockRows: 2, allowInFront: false }) {
   const tileSize = 16;
@@ -490,21 +577,231 @@ placeTreeSprite(tileX, tileY, frame = 0, options = { behindRows: 2, blockRows: 2
   }
 }
 
+initBuildingManager() {
+    this.buildings = [];
 
+    this.registerBuilding({
+        x: 5,
+        y: 1,
+        layout: building_blue_big
+    });
+
+    this.registerBuilding({
+        x: 23,
+        y: 1,
+        layout: building_blue_small
+    });
+}
+
+registerBuilding({ x, y, layout }) {
+    const building = {
+        x, y,
+        width: layout.tiles[0].length,
+        height: layout.tiles.length,
+        layout,
+        visible: true,
+        isFadingOut: false,
+    };
+    this.buildings.push(building);
+    this.placeEnterableBuilding(x, y, layout); 
+
+}
+
+placeEnterableBuilding(startX, startY, layout) {
+    const tileSize = 16;
+    const worldX = startX * tileSize;
+    const worldY = startY * tileSize;
+
+    // Store metadata
+    const footprint = {
+        x: worldX,
+        y: worldY,
+        width: layout.tiles[0].length * tileSize,
+        height: layout.tiles.length * tileSize,
+        tiles: layout.tiles,
+        layout,
+        startX,
+        startY,
+        active: true
+    };
+
+    // Place exterior
+    this.populateLayoutToLayer(this.buildingLayer, layout.tiles, startX, startY);
+    this.buildingLayer_inside_floor.setAlpha(0);
+    this.buildingLayer_inside.setAlpha(0);
+    this.buildingLayer_inside_decor.setAlpha(0);
+    this.buildingLayer_inside_decor2.setAlpha(0);
+    // Store collision
+    this.markBuildingObstacles(layout, startX, startY);
+
+    // Mark walk-behind zones
+    this.markWalkBehindDepthZones(layout, startX, startY, 6);
+
+    // Only place interior if defined
+    if (layout.tiles_inside_floor) {
+        this.enterableBuildings.push(footprint);
+        this.populateLayoutToLayer(this.buildingLayer_inside_floor, layout.tiles_inside_floor, startX, startY);  
+        this.populateLayoutToLayer(this.buildingLayer_inside_decor, layout.tiles_inside_decor1 || [], startX, startY);
+        this.populateLayoutToLayer(this.buildingLayer_inside_decor2, layout.tiles_inside_decor2 || [], startX, startY);
+        this.populateLayoutToLayer(this.buildingLayer_inside, layout.tiles_inside, startX, startY);
+    }
+}
 
 
 markBuildingObstacles(layout, startX, startY) {
     const tiles = layout.tiles;
     const rule = layout.obstacleRule || (() => false); 
-
+    const doors = layout.doors || [];
     for (let y = 0; y < tiles.length; y++) {
         for (let x = 0; x < tiles[y].length; x++) {
-            if (rule(x, y, tiles)) {
-                this.buildingCollisionLayer.putTileAt(1, startX + x, startY + y); 
+          const isDoor = doors.some(d => d.x === x && d.y === y);
+          if (!isDoor && rule(x, y, tiles)) {
+            this.buildingCollisionLayer.putTileAt(1, startX + x, startY + y); 
+          }
+        }
+    }
+}
+
+fadeLayer(layer, alpha, duration = 300) {
+    this.tweens.add({
+        targets: layer,
+        alpha,
+        duration,
+        ease: 'Linear'
+    });
+}
+
+hideBuildingExterior(footprint) {
+  console.log("HIDE?");
+    const { tiles, startX, startY } = footprint;
+    for (let y = 0; y < tiles.length; y++) {
+        for (let x = 0; x < tiles[y].length; x++) {
+            this.buildingLayer.removeTileAt(startX + x, startY + y);
+        }
+    }
+    // Optional: remove collision
+    for (let y = 0; y < tiles.length; y++) {
+        for (let x = 0; x < tiles[y].length; x++) {
+            this.buildingCollisionLayer.removeTileAt(startX + x, startY + y);
+        }
+    }
+}
+
+restoreBuildingExterior(footprint) {
+    this.populateLayoutToLayer(this.buildingLayer, footprint.layout.tiles, footprint.startX, footprint.startY);
+    this.markBuildingObstacles(footprint.layout, footprint.startX, footprint.startY);
+}
+
+enterBuilding(building) {
+    if (!building.layout.tiles_inside || building.isFadingOut) return;
+
+    const duration = 300; // milliseconds
+    const tilesToRemove = [];
+
+    for (let y = 0; y < building.layout.tiles.length; y++) {
+        for (let x = 0; x < building.layout.tiles[0].length; x++) {
+            const tile = this.buildingLayer.getTileAt(building.x + x, building.y + y);
+            if (tile) {
+                tile.alpha = 1;
+                tilesToRemove.push({ x: building.x + x, y: building.y + y });
+            }
+        }
+    }
+
+    console.log("FADE", building.isFadingOut);
+    building.isFadingOut = true;
+    console.log("FADE", building.isFadingOut);
+    // Animate alpha fade-out on the tile layer
+    this.tweens.add({
+        targets: tilesToRemove.map(({ x, y }) => this.buildingLayer.getTileAt(x, y)),
+        alpha: 0,
+        duration,
+        ease: 'Linear',
+        onComplete: () => {
+          console.log("COMPLETE");
+            // After fading, remove tiles and collisions
+            for (const { x, y } of tilesToRemove) {
+                this.buildingLayer.removeTileAt(x, y);
+                this.buildingCollisionLayer.removeTileAt(x, y);
+                building.visible = false;
+                building.isFadingOut = false;
+            }
+        }
+    });
+    
+    // Draw interior floor
+    this.buildingLayer_inside_floor.setAlpha(1);
+    this.buildingLayer_inside.setAlpha(1);
+    this.buildingLayer_inside_decor.setAlpha(1);
+    this.buildingLayer_inside_decor2.setAlpha(1);
+   
+    /*
+    this.fadeLayer(this.buildingLayer_inside_floor, 1,1);
+    this.fadeLayer(this.buildingLayer_inside, 1,1);
+    this.fadeLayer(this.buildingLayer_inside_decor, 1,1);
+    this.fadeLayer(this.buildingLayer_inside_decor2, 1,1);
+    */
+    // Force pathfinder to rebuild
+    this.entities.forEach(e => { e.gridGenerated = false; });
+
+    
+}
+
+exitBuilding(building) {
+    // Check for entities still inside
+    const tileSize = 16;
+    const worldX = building.x * tileSize;
+    const worldY = building.y * tileSize;
+    const width = building.width * tileSize;
+    const height = building.height * tileSize;
+
+    const anyoneInside = this.entities.some(e => {
+        return (
+            e.sprite.x >= worldX &&
+            e.sprite.x <= worldX + width &&
+            e.sprite.y >= worldY &&
+            e.sprite.y <= worldY + height
+        );
+    });
+
+    if (anyoneInside) return; // defer restoration
+
+    // Restore outside
+    this.populateLayerFromArrayOffset(this.buildingLayer, building.layout.tiles, building.x, building.y);
+    this.markBuildingObstacles(building.layout, building.x, building.y);
+    this.buildingLayer.setAlpha(.5);
+    // Remove inside tiles
+  this.fadeLayer(this.buildingLayer_inside_floor, 0);
+  this.fadeLayer(this.buildingLayer_inside, 0);
+  this.fadeLayer(this.buildingLayer_inside_decor, 0);
+  this.fadeLayer(this.buildingLayer_inside_decor2, 0);
+  // Force pathfinder to rebuild
+  this.entities.forEach(e => { e.gridGenerated = false; });
+
+    building.visible = true;
+    this.fadeLayer(this.buildingLayer, 1); // fade building exterior in again
+}
+
+populateLayerFromArrayOffset(layer, array, startX, startY) {
+    for (let y = 0; y < array.length; y++) {
+        for (let x = 0; x < array[y].length; x++) {
+            const tileId = array[y][x];
+            if (tileId !== -1) {
+                layer.putTileAt(tileId, startX + x, startY + y);
             }
         }
     }
 }
+
+clearLayerArea(layer, startX, startY, width, height) {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            layer.removeTileAt(startX + x, startY + y);
+        }
+    }
+}
+
+
 
 markWalkBehindDepthZones(layout, startX, startY, depthVal) {
   const rule = layout.walkBehindRule;
@@ -576,8 +873,10 @@ buildPathfindingGrid() {
 
             const treeTile = this.treeCollisionLayer.getTileAt(x, y);
             const buildingTile = this.buildingCollisionLayer.getTileAt(x, y);
+            const buildingInteriorObject = this.buildingLayer_inside_decor.getTileAt(x,y);
+            const buildingInteriorWalls = this.buildingLayer_inside.getTileAt(x,y);
             const cropTile = this.cropLayerBottom.getTileAt(x,y);
-            const isObstacle = obstacleTile || treeTile || buildingTile || cropTile;
+            const isObstacle = obstacleTile || treeTile || buildingTile || buildingInteriorWalls || buildingInteriorObject || cropTile;
 
             const isWater = groundTile && groundTile.index === 68;
 
